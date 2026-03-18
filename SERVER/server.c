@@ -3,8 +3,7 @@
 int main() {
 
     struct listen_sock passive;
-
-    setup_socket(&passive);
+    setup_listen_socket(&passive);
     
     for (;;) {
 
