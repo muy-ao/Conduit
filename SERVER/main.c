@@ -1,11 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
+#include <sys/select.h>
+#include <errno.h>
 
 #include "socket.h"
 #include "client.h"
 
+int sig_int_recieved = 0;
+
+void sigint_handler(int sig) {
+    (void)sig;
+    sig_int_recieved = 1;
+}
+
 int main() {
+
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, sigint_handler);
 
     struct listen_sock passive;
     setup_listen_socket(&passive);
@@ -16,13 +29,16 @@ int main() {
     FD_ZERO(&all_fds);
     FD_SET(passive.sock_fd, &all_fds);
 
-    for (;;) {
+    while (!sig_int_recieved) {
 
         ready_fds = all_fds;
 
         // Wait until a socket is ready
         int ret = select(max_fd + 1, &ready_fds, NULL, NULL, NULL);
         if (ret < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
             perror("server: select");
             continue;
         }
@@ -73,5 +89,17 @@ int main() {
         }
     }
 
+    struct client_sock *curr = get_head();
+    while (curr != NULL) {
+        struct client_sock *next = get_next(curr);
+        close(get_sock_fd(curr));
+        remove_client(curr);
+        curr = next;
+    }
 
+    close(passive.sock_fd);
+    free(passive.addr);
+
+    printf("\nServer shut down.\n");
+    return 0;
 }
