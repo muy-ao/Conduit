@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 
 #include "socket.h"
 #include "client.h"
@@ -20,7 +21,16 @@ int accept_connection(int fd) {
         return -1;
     }
 
-    add_client(client_fd);
+    if (client_fd >= FD_SETSIZE) {
+        perror("server: accept - full");
+        close(client_fd);
+        return -1;
+    }
+
+    if (add_client(client_fd) != 0) {
+        close(client_fd);
+        return -1;
+    }
     return client_fd;
 }   
 

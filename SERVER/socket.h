@@ -3,7 +3,6 @@
 
 #include <netinet/in.h>
 
-#define SERVER_PORT 3000
 #define MAX_BACKLOG 5
 #define BUF_SIZE 1024
 
