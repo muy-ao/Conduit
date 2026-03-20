@@ -7,6 +7,7 @@
 
 #include "socket.h"
 #include "client.h"
+#include "handler.h"
 
 int sig_int_recieved = 0;
 
@@ -22,6 +23,7 @@ int main() {
 
     struct listen_sock passive;
     setup_listen_socket(&passive);
+    setup_queue();
 
     int max_fd = passive.sock_fd;
     fd_set all_fds, ready_fds;
@@ -80,7 +82,7 @@ int main() {
                 char *msg;
                 while (get_message(&msg, curr) == 0) {
                     printf("%s\n", msg);
-                    // handle(msg);
+                    handle(msg);
                     free(msg);
                 }
             }
