@@ -1,3 +1,28 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+
+#include "socket.h"
+#include "client.h"
+
+// -1 error
+int accept_connection(int fd) {
+    struct sockaddr_in peer;
+    unsigned int peer_len = sizeof(peer);
+
+    peer.sin_family = AF_INET;
+    int client_fd = accept(fd, (struct sockaddr *)&peer, &peer_len);
+
+    if (client_fd < 0) {
+        perror("server: accept");
+        return -1;
+    }
+
+    add_client(client_fd);
+    return client_fd;
+}   
 
 
 void setup_listen_socket(struct listen_sock *passive) {
@@ -53,4 +78,46 @@ void setup_listen_socket(struct listen_sock *passive) {
         close(passive->sock_fd);
         exit(1);
     }
+}
+
+// -1 not found
+// index of CRLF otherwise
+int find_CRLF(char *buf, int inbuf) {
+    for (int i = 0; i < inbuf - 1; i++) {
+        if (buf[i] == '\r' && buf[i + 1] == '\n') {
+            return i + 2;
+        }
+    }
+    return -1;
+}
+
+// -1 error
+// 0 terminated msg found
+// 1 socket closed
+// 2 partial msg
+int read_from_client(struct client_sock *client) {
+
+    int *inbuf = &(client->inbuf);
+    char *buf = client->buf;
+
+    if (*inbuf == BUF_SIZE) {
+        if (find_CRLF(buf, *inbuf) != -1) {
+            return 0;
+        }
+        return -1;
+    }
+
+    int count = read(client->sock_fd, buf + *inbuf, BUF_SIZE - *inbuf);
+    if (count < 0) {
+        return -1;
+
+    } else if (count == 0) {
+        return 1;
+    }
+
+    *inbuf += count;
+    if (find_CRLF(buf, *inbuf) != -1) {
+        return 0;
+    }
+    return 2;
 }
